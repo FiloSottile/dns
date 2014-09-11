@@ -408,7 +408,7 @@ func (rr *RRSIG) Verify(k *DNSKEY, rrset []RR) error {
 		case ECDSAP256SHA256:
 			h = sha256.New()
 		case ECDSAP384SHA384:
-			h = sha512.New()
+			h = sha512.New384()
 		}
 		io.WriteString(h, string(signeddata))
 		sighash := h.Sum(nil)
@@ -417,7 +417,7 @@ func (rr *RRSIG) Verify(k *DNSKEY, rrset []RR) error {
 		r.SetBytes(sigbuf[:len(sigbuf)/2])
 		s := big.NewInt(0)
 		s.SetBytes(sigbuf[len(sigbuf)/2:])
-		if ecdsa.Verify(pubkey, sighash, r, s) {
+		if !ecdsa.Verify(pubkey, sighash, r, s) {
 			return ErrSig
 		}
 		return nil
