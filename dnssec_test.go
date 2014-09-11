@@ -412,7 +412,7 @@ Activate: 20110302104537`
 	}
 }
 
-func TestSignECDSA(t *testing.T) {
+func TestSignVerifyECDSA(t *testing.T) {
 	pub := `example.net. 3600 IN DNSKEY 257 3 14 (
 	xKYaNhWdGOfJ+nPrL8/arkwf2EY3MDJ+SErKivBVSum1
 	w/egsXvSADtNJhyem5RCOpgQ6K8X1DRSEkrbYQ+OB+v8
