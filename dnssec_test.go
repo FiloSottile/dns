@@ -5,6 +5,9 @@
 package dns
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/rsa"
 	"strings"
 	"testing"
@@ -451,6 +454,60 @@ PrivateKey: WURgWHCcYIYUPWgeLmiPY2DJJk02vgrmTfitxgqcL4vwW7BOrbawVmVe0d9V94SR`
 	if e := sig.Verify(eckey.(*DNSKEY), []RR{a}); e != nil {
 		t.Logf("Failure to validate: %s", e.Error())
 		t.Fail()
+	}
+}
+
+func BenchmarkSignECDSA(b *testing.B) {
+	pub := `example.net. 3600 IN DNSKEY 257 3 13 (
+	        GojIhhXUN/u4v54ZQqGSnyhWJwaubCvTmeexv7bR6edb
+	        krSqQpF64cYbcB7wNcP+e+MAnLr+Wi9xMWyQLc8NAA== )`
+	priv := `Private-key-format: v1.2
+Algorithm: 13 (ECDSAP256SHA256)
+PrivateKey: GU6SnQ/Ou+xC5RumuIUIuJZteXT2z0O/ok1s38Et6mQ=`
+
+	eckey, err := NewRR(pub)
+	if err != nil {
+		b.Fatal(err.Error())
+	}
+	privkey, err := eckey.(*DNSKEY).NewPrivateKey(priv)
+	if err != nil {
+		b.Fatal(err.Error())
+	}
+
+	nsec, _ := NewRR("#.ogud.com.		899	IN	NSEC	askja.ogud.com. SSHFP RRSIG NSEC")
+
+	sig := &RRSIG{
+		Hdr:        RR_Header{"#.ogud.com.", TypeRRSIG, ClassINET, 899, 0},
+		KeyTag:     eckey.(*DNSKEY).KeyTag(),
+		SignerName: eckey.(*DNSKEY).Hdr.Name,
+		Algorithm:  eckey.(*DNSKEY).Algorithm,
+	}
+	sig.Expiration, _ = StringToTime("20100909102025")
+	sig.Inception, _ = StringToTime("20100812102025")
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		sig.Sign(privkey, []RR{nsec})
+	}
+}
+
+func BenchmarkECDSA(b *testing.B) {
+	c := elliptic.P256()
+	priv, _ := ecdsa.GenerateKey(c, rand.Reader)
+
+	hashed := []byte("testing")
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		r, s, err := ecdsa.Sign(rand.Reader, priv, hashed)
+		if err != nil {
+			b.Errorf("error signing: %s", err)
+			return
+		}
+		_ = r
+		_ = s
 	}
 }
 
